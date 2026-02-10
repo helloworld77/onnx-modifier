@@ -27,11 +27,14 @@ def modify_and_download_model():
     modify_info = request.get_json()
 
     global onnx_modifier
-    onnx_modifier.reload()   # allow downloading for multiple times
+    onnx_modifier.reload()   
     onnx_modifier.modify(modify_info)
-    save_path = onnx_modifier.check_and_save_model()
-
-    return save_path
+    save_path = onnx_modifier.check_and_save_model() 
+    # save_path 此时类似于 "modified_onnx/modified_model.onnx"
+    # 获取绝对路径，确保 send_file 能找到它
+    abs_path = os.path.abspath(save_path)
+    # 返回文件流，并设置 as_attachment=True 强制浏览器弹出下载窗口
+    return send_file(abs_path, as_attachment=True)
 
 def parse_args():
     parser = argparse.ArgumentParser()
