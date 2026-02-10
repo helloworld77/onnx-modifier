@@ -1,6 +1,7 @@
+import os
 import argparse
 import logging
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, send_file, make_response
 from .onnx_modifier import onnxModifier
 logging.basicConfig(level=logging.INFO)
 
@@ -22,19 +23,27 @@ def open_model():
 
     return 'OK', 200
 
-@app.route('/download', methods=['POST'])
+@app.route('/download', methods=['GET', 'POST'])
 def modify_and_download_model():
-    modify_info = request.get_json()
-
-    global onnx_modifier
-    onnx_modifier.reload()   
-    onnx_modifier.modify(modify_info)
-    save_path = onnx_modifier.check_and_save_model() 
-    # save_path 此时类似于 "modified_onnx/modified_model.onnx"
-    # 获取绝对路径，确保 send_file 能找到它
-    abs_path = os.path.abspath(save_path)
-    # 返回文件流，并设置 as_attachment=True 强制浏览器弹出下载窗口
-    return send_file(abs_path, as_attachment=True)
+    if request.method == 'POST':
+        modify_info = request.get_json()
+        global onnx_modifier
+        onnx_modifier.reload()
+        onnx_modifier.modify(modify_info)
+        save_path = onnx_modifier.check_and_save_model() 
+        # save_path 通常是 'modified_onnx/modified_yourname.onnx'
+        file_name = os.path.basename(save_path)
+        return file_name, 200
+    target_file = request.args.get('name')
+    if not target_file:
+        return "Missing filename", 400
+    abs_path = os.path.abspath(os.path.join('modified_onnx', target_file))
+    if not os.path.exists(abs_path):
+        return f"File {target_file} not found.", 404
+    response = make_response(send_file(abs_path, as_attachment=True))
+    response.headers["Content-Disposition"] = f"attachment; filename={target_file}"
+    response.headers["Content-Length"] = os.path.getsize(abs_path)
+    return response
 
 def parse_args():
     parser = argparse.ArgumentParser()

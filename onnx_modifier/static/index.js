@@ -230,31 +230,22 @@ host.BrowserHost = class {
                 headers: { 'Content-Type': 'application/json' },
                 method: 'POST',
                 body: this._buildModificationInfo()
-            }).then((response) => {
-                if (response.ok) { // 状态码 200-299
-                    // 核心修改：将响应转为 blob
-                    response.blob().then(blob => {
-                        // 创建一个隐藏的下载链接
-                        const url = window.URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        // 设置下载的文件名，可以根据需要自定义
-                        a.download = "modified_model.onnx"; 
-                        document.body.appendChild(a);
-                        a.click();
-                        window.URL.revokeObjectURL(url);
-                        a.remove();
-                        
-                        swal("Success!", "Model downloaded successfully!", "success");
+            }).then(response => {
+                if (response.ok) {
+                    response.text().then(fileName => {
+                        if (fileName && fileName !== "NULL") {
+                            window.location.href = `/download?name=${encodeURIComponent(fileName)}`;
+                            swal("Success!", "Downloading: " + fileName, "success");
+                        } else {
+                            swal("Error", "Model generation failed", "error");
+                        }
                     });
                 } else {
-                    swal("Error happens!", "Please check the server log", "error");
+                    swal("Error", "Server error", "error");
                 }
-            }).catch(err => {
-                console.error(err);
-                swal("Error!", "Failed to fetch model", "error");
             });
         });
+
         const addNodeButton = this.document.getElementById('add-node');
         addNodeButton.addEventListener('click', () => {
             // this._view._graph.resetGraph();
